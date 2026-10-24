@@ -169,6 +169,9 @@ input[type=checkbox]{width:20px;height:20px}
 .ov .btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:14px}
 #intro .box{max-width:480px}
 #pauseOv{z-index:30}
+.top{grid-template-columns:1fr 1.2fr 1fr auto}
+#pauseBtn{white-space:nowrap}
+body.paused #card,body.paused #minutes,body.paused #banner,body.paused #queueBox{visibility:hidden}
 #introStage{font-size:30px;font-weight:900}
 #introRule{font-size:15px}
 
@@ -200,7 +203,9 @@ tr.best td{background:#fff5ec;font-weight:700}
   .tl{font-size:11px;line-height:1.3}.tl b{font-size:14px}
   #pTime{font-size:16px}#pClock{font-size:15px}
   .tc .bar{height:6px}#pLeft{font-size:11px}
-  #pClockL{display:none}#pTrain{font-size:11px;max-width:7.5em;line-height:1.25}
+  #pClockL{display:none}
+  .top{grid-template-columns:minmax(0,1fr) auto auto auto}
+  #pauseBtn{padding:6px 10px}#pauseBtn span{display:none}#pTrain{font-size:11px;max-width:7.5em;line-height:1.25}
   #scene{height:84px}
   .boss{transform:scale(.6);transform-origin:bottom left;bottom:30px}
   #bossS{transform:scale(.9)}
@@ -248,8 +253,16 @@ tr.best td{background:#fff5ec;font-weight:700}
       <li>電話・上司の追加依頼・飲み会の誘いは、文を打って対応。疲労がたまると文字がかすんで揺れます。</li>
       <li>「コーヒー休憩」（PCはSpaceキー）で疲労回復。ただし3杯目からは飲みすぎ。</li>
       <li>1日クリアで昇進（平社員→主任→課長→部長）。結果は「役職・称号」と給料明細で出ます。部長で条件を満たすと…？</li>
+      <li>FAX・CCなどの英字は、そのまま英字で打ちます（大文字・小文字どちらでもOK）。</li>
+      <li>「時短」モードは1日が約1分半（残業は最大1分）。お題とイベントを詰めた短い1日です。進み具合はふつうと共通。</li>
+      <li>プレイ中は「⏸ 一時停止」ボタンかEscキーで止められます。</li>
       <li>スマホは入力欄をタップして英字キーボードで打ってください。</li>
     </ul>
+  </div>
+  <div class="panel setrow" role="radiogroup" aria-label="勤務モード">
+    <b>勤務モード</b>
+    <label><input type="radio" name="mode" value="normal"> ふつう <small>（1日 約4分＋残業最大3分）</small></label>
+    <label><input type="radio" name="mode" value="short"> 時短 <small>（1日 約1分半＋残業最大1分）</small></label>
   </div>
   <div class="panel setrow">
     <label>音量 <input type="range" id="vol" min="0" max="100" step="10"> <span id="volNum"></span></label>
@@ -267,6 +280,7 @@ tr.best td{background:#fff5ec;font-weight:700}
     <div class="tl"><span id="pRole"></span>　<span id="pDay"></span><b id="pStage"></b></div>
     <div class="tc"><div id="pTime"></div><div class="bar"><i id="pTimeBar"></i></div><div id="pLeft" class="sub"></div></div>
     <div class="tr"><div class="sub" id="pClockL">会社時計</div><div id="pClock"></div><div id="pTrain"></div></div>
+    <button id="pauseBtn" aria-label="一時停止">⏸<span> 一時停止（Esc）</span></button>
   </div>
   <div class="gauges">
     <div class="fat"><span>疲労</span><div class="bar"><i id="fatBar"></i></div><span id="fatNum"></span></div>
@@ -344,7 +358,7 @@ tr.best td{background:#fff5ec;font-weight:700}
 <!-- ステージ案内 -->
 <div class="ov" id="intro"><div class="box"><div id="introStage"></div><p id="introRule"></p><p class="sub" id="introSub"></p></div></div>
 <!-- 一時停止 -->
-<div class="ov" id="pauseOv" role="dialog" aria-modal="true"><div class="box"><h2>一時停止中</h2><p>画面を離れたので、時間を止めています。</p><div class="btns"><button id="resumeBtn" class="primary">再開する</button></div></div></div>
+<div class="ov" id="pauseOv" role="dialog" aria-modal="true"><div class="box"><h2>一時停止中</h2><p id="pauseMsg"></p><p class="sub">時間・イベント・疲労・残業の時計はすべて止まっています。</p><div class="btns"><button id="resumeBtn" class="primary">再開する</button><button id="pauseQuitBtn">タイトルへ戻る</button></div></div></div>
 <!-- 中断確認 -->
 <div class="ov" id="quitOv" role="dialog" aria-modal="true"><div class="box"><h2>タイトルへ戻りますか？</h2><p>中断すると、この日の途中経過は消えます（昇進・明細は確定しません）。<br><small>この画面を出している間は時間が止まっています。</small></p><div class="btns"><button id="contBtn" class="primary">続ける</button><button id="abortBtn" class="danger">この日を中断する</button></div></div></div>
 <!-- リセット確認 -->
@@ -358,19 +372,18 @@ const SAVE_KEY = 'shachikuTyping.v1';
 const ROLES = ['平社員','主任','課長','部長'];
 const ERAS = ['昭和','平成','令和'];
 const ERA_CLS = ['showa','heisei','reiwa'];
-const REDO_MAX = 6, CUP_MAX = 5, CUP_CD = 20, CUP_LIMIT = 8;
-const PHONE_LIMIT = 14, REQ_LIMIT = 12, DRINK_LIMIT = 12;
-const OT_LIMIT = 180, TRAIN_T = 123.75, CO_SEC = 160; // 残業：実1秒＝会社160秒
+const REDO_MAX = 6, CUP_MAX = 5, CUP_LIMIT = 8;
+const TRAIN_T = 123.75, CO_SEC = 160; // 残業（ふつう）：実1秒＝会社160秒
 const PEND_SEC = 0.3, MISS_FX_MS = 100, OK_SND_MS = 30;
 const ORDER = ['morning','am','noon','eve','pre'];
 const STAGES = {
-  morning:{name:'朝',title:'遅刻の言い訳',limit:40,rule:'上司が近づいてくる前に、言い訳を打ち切れ！',clock:[8*60+20,9*60]},
-  am:{name:'午前',title:'メールの定型文',limit:55,rule:'長いのに毎日打つ定型文。途中で電話が鳴ります。',clock:[9*60,12*60]},
-  noon:{name:'昼',title:'上司の割り込み依頼',limit:55,rule:'打っている途中に依頼が割り込んできます。引き受ける？断る？',clock:[12*60,13*60]},
-  eve:{name:'夕方',title:'会議の議事録',limit:50,rule:'発言がどんどん流れてきます。上司が背後に立つことも…',clock:[13*60,17*60]},
-  pre:{name:'定時前',title:'日報',limit:45,rule:'打ち切れば定時退社。飲み会の誘いに注意。',clock:[17*60,18*60]},
-  ot:{name:'残業',title:'終電までに片付ける',limit:OT_LIMIT,rule:'残った仕事を片付けろ。終電は23:30。翌2:00で強制終了。',clock:null},
-  resign:{name:'退職届',title:'退職届を書く',limit:60,rule:'60秒以内に退職届を書き上げろ。',clock:null}
+  morning:{name:'朝',title:'遅刻の言い訳',rule:'上司が近づいてくる前に、言い訳を打ち切れ！',clock:[8*60+20,9*60]},
+  am:{name:'午前',title:'メールの定型文',rule:'長いのに毎日打つ定型文。途中で電話が鳴ります。',clock:[9*60,12*60]},
+  noon:{name:'昼',title:'上司の割り込み依頼',rule:'打っている途中に依頼が割り込んできます。引き受ける？断る？',clock:[12*60,13*60]},
+  eve:{name:'夕方',title:'会議の議事録',rule:'発言がどんどん流れてきます。上司が背後に立つことも…',clock:[13*60,17*60]},
+  pre:{name:'定時前',title:'日報',rule:'打ち切れば定時退社。飲み会の誘いに注意。',clock:[17*60,18*60]},
+  ot:{name:'残業',title:'終電までに片付ける',rule:'残った仕事を片付けろ。終電は23:30。翌2:00で強制終了。',clock:null},
+  resign:{name:'退職届',title:'退職届を書く',rule:'60秒以内に退職届を書き上げろ。',clock:null}
 };
 const T = s => s.split('|');
 // お題：[ステージ][役職] = [昭和, 平成, 令和]（表示文|読み）
@@ -381,10 +394,10 @@ const QD = {
   ['朝礼の遅刻をおわびします|ちょうれいのちこくをおわびします','連絡の遅れをおわびします|れんらくのおくれをおわびします','接続の遅れをおわびします|せつぞくのおくれをおわびします'],
   ['朝礼前に根回ししていました|ちょうれいまえにねまわししていました','関係各所にメールしていました|かんけいかくしょにめーるしていました','会議前にチャットしていました|かいぎまえにちゃっとしていました']],
  am:[
-  ['お世話になっております。FAXを送りました|おせわになっておりますふぁっくすをおくりました','CCで失礼します。資料をご確認ください|しーしーでしつれいしますしりょうをごかくにんください','チャットで失礼します。資料を共有します|ちゃっとでしつれいしますしりょうをきょうゆうします'],
-  ['後輩の稟議をご確認ください|こうはいのりんぎをごかくにんください','後輩もCCに追加いたしました|こうはいもしーしーについかいたしました','後輩を共有先に追加しました|こうはいをきょうゆうさきについかしました'],
-  ['FAXの誤送信をおわびします|ふぁっくすのごそうしんをおわびします','CCの入れ忘れをおわびします|しーしーのいれわすれをおわびします','チャットの誤送信をおわびします|ちゃっとのごそうしんをおわびします'],
-  ['稟議の前にご意向を伺います|りんぎのまえにごいこうをうかがいます','関係者をCCに入れておきます|かんけいしゃをしーしーにいれておきます','事前にチャットで認識を合わせます|じぜんにちゃっとでにんしきをあわせます']],
+  ['お世話になっております。FAXを送りました|おせわになっておりますFAXをおくりました','CCで失礼します。資料をご確認ください|CCでしつれいしますしりょうをごかくにんください','チャットで失礼します。資料を共有します|ちゃっとでしつれいしますしりょうをきょうゆうします'],
+  ['後輩の稟議をご確認ください|こうはいのりんぎをごかくにんください','後輩もCCに追加いたしました|こうはいもCCについかいたしました','後輩を共有先に追加しました|こうはいをきょうゆうさきについかしました'],
+  ['FAXの誤送信をおわびします|FAXのごそうしんをおわびします','CCの入れ忘れをおわびします|CCのいれわすれをおわびします','チャットの誤送信をおわびします|ちゃっとのごそうしんをおわびします'],
+  ['稟議の前にご意向を伺います|りんぎのまえにごいこうをうかがいます','関係者をCCに入れておきます|かんけいしゃをCCにいれておきます','事前にチャットで認識を合わせます|じぜんにちゃっとでにんしきをあわせます']],
  noon:[
   ['昼休みに稟議を回します|ひるやすみにりんぎをまわします','取り急ぎ集計して送ります|とりいそぎしゅうけいしておくります','チャットの依頼を確認します|ちゃっとのいらいをかくにんします'],
   ['後輩に判子の順番を教えます|こうはいにはんこのじゅんばんをおしえます','後輩にメーリスを案内します|こうはいにめーりすをあんないします','後輩と画面を共有します|こうはいとがめんをきょうゆうします'],
@@ -401,7 +414,7 @@ const QD = {
   ['稟議の遅延を重ねておわびします|りんぎのちえんをかさねておわびします','報告の遅れを重ねておわびします|ほうこくのおくれをかさねておわびします','更新の漏れを重ねておわびします|こうしんのもれをかさねておわびします'],
   ['明日の根回しも済ませました|あしたのねまわしもすませました','明日の関係者にも連絡しました|あしたのかんけいしゃにもれんらくしました','明日の合意事項を共有しました|あしたのごういじこうをきょうゆうしました']],
  ot:[
-  ['FAXの受信を待っています|ふぁっくすのじゅしんをまっています','最終版のメールを待っています|さいしゅうばんのめーるをまっています','チャットの返信を待っています|ちゃっとのへんしんをまっています'],
+  ['FAXの受信を待っています|FAXのじゅしんをまっています','最終版のメールを待っています|さいしゅうばんのめーるをまっています','チャットの返信を待っています|ちゃっとのへんしんをまっています'],
   ['後輩の稟議が通るまで残ります|こうはいのりんぎがとおるまでのこります','後輩の最終版を確認します|こうはいのさいしゅうばんをかくにんします','後輩の通知を一緒に確認します|こうはいのつうちをいっしょにかくにんします'],
   ['判子待ちの長期化をおわびします|はんこまちのちょうきかをおわびします','度重なる修正をおわびします|たびかさなるしゅうせいをおわびします','深夜の通知をおわびします|しんやのつうちをおわびします'],
   ['明朝の稟議に向けて根回しします|みょうちょうのりんぎにむけてねまわしします','最終版の認識を合わせておきます|さいしゅうばんのにんしきをあわせておきます','深夜のハドルで合意を取ります|しんやのはどるでごういをとります']],
@@ -423,6 +436,17 @@ const TITLES = [['判子を置いて帰る人','根回しの達人','気合い�
 const REDO_WHY = ['前例に合わせて','念のため再提出','上の確認が入りました','フォーマット変更のため','誤字がありました（たぶん）','もう少し丁寧に'];
 const MATE_OUT = [20, 60, 100];   // 残業中に同僚が帰る時刻（実秒）
 const PAY_NOTE = '備考：感謝のお言葉（支給済み）／有給申請（確認中）／やりがい（現物支給）';
+// 勤務モード：ふつう／時短（時短は残業の会社時計を3倍速にして、同じ18:00〜翌2:00を1分で進める）
+const MODES = {
+  normal:{name:'ふつう', desc:'1日 約4分＋残業最大3分', short:false, lim:{morning:40,am:55,noon:55,eve:50,pre:45,ot:180,resign:60},
+    phoneAt:10, phoneLim:14, reqAt:[8,26], reqLim:12, drinkAt:10, drinkLim:12, eveAt:[0,8,16], boss:[8,20], cupCd:20, ot:1, limW:1},
+  short:{name:'時短', desc:'1日 約1分半＋残業最大1分', short:true, lim:{morning:18,am:30,noon:26,eve:26,pre:26,ot:60,resign:45},
+    phoneAt:5, phoneLim:12, reqAt:[4], reqLim:10, drinkAt:4, drinkLim:10, eveAt:[0,7], boss:[5,15], cupCd:10, ot:3, limW:2}
+};
+// 時短のお題：日ごとの年代順 ord の何番目を使うか（1日で3年代を2問ずつ）
+const SHORT_SLOT = {morning:[0], am:[1], noon:[2], eve:[0,1], pre:[2], ot:[0], resign:[0,1,2]};
+function MD(){ return MODES[(D && D.mode) || P.set.mode] || MODES.normal; }
+const lim = key => MD().lim[key];
 const PAY = [[10000,1500],[12000,1800],[14000,2100],[16000,2400]];
 
 /* ================= ローマ字判定 ================= */
@@ -479,6 +503,7 @@ function cands(y, i, d = 0){
         if (p) for (const r of p) out.push({r,n:2});
         if (YOON[c] && YV[nx]) for (const h of YOON[c]) out.push({r:h+YV[nx],n:2});
       }
+      if (/[A-Za-z]/.test(c)) out.push({r:c.toLowerCase(), n:1, disp:c});   // FAX・CCなどの英字はそのまま打つ（大文字小文字どちらでも）
       for (const r of (BASE[c] || [])) out.push({r,n:1});
     }
   }
@@ -495,8 +520,8 @@ function feed(t, ch){
     const pre = cs.filter(o => o.r.startsWith(nb));
     if (pre.length){
       if (nb.length > 16) return {ok:false, n};
-      t.buf = nb; t.typed += ch; t.pend = false;
       const ex = pre.find(o => o.r === nb);
+      t.buf = nb; t.typed += ex && ex.disp ? ex.disp : ch; t.pend = false;
       if (ex){
         if (pre.length === 1) n += commit(t, ex);
         else if (ex.end){ t.pend = true; t.pendT = 0; }
@@ -517,7 +542,7 @@ function guideRest(y, pos, buf){
     const cs = cands(y, i);
     const c = first && buf ? cs.find(o => o.r.startsWith(buf)) : cs[0];
     if (!c) break;
-    out += first && buf ? c.r.slice(buf.length) : c.r;
+    out += first && buf ? c.r.slice(buf.length) : (c.disp || c.r);
     i += c.n; first = false;
   }
   return out;
@@ -532,7 +557,7 @@ function judge(yomi, str){
 }
 
 /* ================= 保存 ================= */
-const DEF_SET = {vol:30, mute:false, reduce:false};
+const DEF_SET = {vol:30, mute:false, reduce:false, mode:'normal'};
 function defSave(){
   let reduce = false;
   try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
@@ -557,6 +582,7 @@ function loadSave(){
     d.set.vol = Math.round(num(o.set.vol, 0, 100, 30) / 10) * 10;
     d.set.mute = o.set.mute === true;
     if (typeof o.set.reduce === 'boolean') d.set.reduce = o.set.reduce;
+    if (o.set.mode === 'short') d.set.mode = 'short';
   }
   if (validLast(o.last)) d.last = o.last;
   return d;
@@ -567,7 +593,7 @@ function validLast(r){
     const str = v => typeof v === 'string';
     const pairs = a => Array.isArray(a) && a.length > 0 && a.every(x => Array.isArray(x) && x.length === 2 && str(x[0]) && str(x[1]));
     const int = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
-    return str(r.title) && str(r.sub) && str(r.end) && str(r.eraNote) && (r.payNote == null || str(r.payNote)) &&
+    return str(r.title) && str(r.sub) && str(r.end) && str(r.eraNote) && (r.payNote == null || str(r.payNote)) && (r.mode == null || !!MODES[r.mode]) &&
       ['ontime','otdone','forced'].includes(r.kind) && int(r.role, 0, 3) && int(r.dayNo, 1, 1e6) && int(r.redo, 0, REDO_MAX) && int(r.score, 0, 100) &&
       pairs(r.stats) && pairs(r.scoreParts) && pairs(r.pay) &&
       Array.isArray(r.era) && r.era.length === 3 && r.era.every(x => Array.isArray(x) && x.length === 6 && x.slice(0, 5).every(str) && typeof x[5] === 'boolean') &&
@@ -615,11 +641,12 @@ const SND = {
 
 /* ================= 状態 ================= */
 let P = loadSave();
-const G = {scr:'title', hidden:false, dialog:false, last:0, scale:1, intro:null, dirty:true, kanaWarn:-1e9, pasteWarn:-1e9};
+const G = {scr:'title', hidden:false, dialog:false, manual:false, last:0, scale:1, intro:null, dirty:true, kanaWarn:-1e9, pasteWarn:-1e9};
 let D = null;   // 1日の記録（退職届中は退職届用）
 let S = null;   // 今のステージ
 let R = null;   // 表示中の結果
 let uid = 0;
+const isPaused = () => G.hidden || G.dialog || G.manual;
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 function rot(day){ const m = day % 3; return m === 1 ? [0,1,2] : m === 2 ? [1,2,0] : [2,0,1]; }
 function mkTask(kind, src, era, extra){
@@ -627,7 +654,7 @@ function mkTask(kind, src, era, extra){
   return Object.assign({id:++uid, kind, text, yomi, era, pos:0, buf:'', typed:'', pend:false, pendT:0, miss:0, redoAdded:false, isRedo:false}, extra || {});
 }
 function newDay(role, dayNo, hangover){
-  return {role, dayNo, hangover, fatigue: hangover ? 25 : 0, playT:0, cupReadyAt:0, cups:0,
+  return {mode: MODES[P.set.mode] ? P.set.mode : 'normal', role, dayNo, hangover, fatigue: hangover ? 25 : 0, playT:0, cupReadyAt:0, cups:0,
     chars:0, keys:0, miss:0, redo:0, carry:[], late:false,
     era:[{K:0,M:0,T:0},{K:0,M:0,T:0},{K:0,M:0,T:0}],
     phone:null, accepted:0, refused:0, forced:0, drink:null, bossMiss:0, limitSec:0, wentOT:false, finished:false};
@@ -651,7 +678,7 @@ function goIntro(key){
   const st = STAGES[key];
   $('#introStage').textContent = st.name + '｜' + st.title;
   $('#introRule').textContent = st.rule;
-  let sub = '制限 ' + st.limit + '秒';
+  let sub = '制限 ' + lim(key) + '秒';
   if (key === 'morning' && D.hangover) sub += '　二日酔いで画面が揺れます…';
   if (key === 'ot') sub = '会社時計 18:00 スタート／未完了 ' + D.carry.length + '問';
   $('#introSub').textContent = sub;
@@ -661,22 +688,24 @@ function goIntro(key){
 function startStage(key){
   $('#intro').classList.remove('on');
   const st = STAGES[key];
-  S = {key, limit:st.limit, t:0, queue:[], ev:null, evq:[], sched:[], arrivals:[], over:false, seq:0, cards:[], bossOn:false};
+  const md = MD();
+  S = {key, limit:lim(key), t:0, queue:[], ev:null, evq:[], sched:[], arrivals:[], over:false, seq:0, cards:[], bossOn:false};
   const ri = D.role, ord = rot(D.dayNo);
   const base = QD[key][ri];
   const mk = (i) => mkTask('work', base[i], key === 'resign' ? null : i, {label:st.name});
+  const picks = (md.short ? SHORT_SLOT[key] : [0,1,2]).map(k => ord[k]);
   if (key === 'eve'){
-    ord.forEach((i, k) => S.arrivals.push({at:k*8, task:mk(i), done:false}));
+    picks.forEach((i, k) => S.arrivals.push({at:md.eveAt[k], task:mk(i), done:false}));
   } else if (key === 'ot'){
     S.queue = D.carry.map(c => Object.assign(c, {carried:true}));
     D.carry = [];
-    ord.forEach(i => S.queue.push(mk(i)));
+    picks.forEach(i => S.queue.push(mk(i)));
   } else {
-    ord.forEach(i => S.queue.push(mk(i)));
+    picks.forEach(i => S.queue.push(mk(i)));
   }
-  if (key === 'am') S.sched.push({at:10, type:'phone', fired:false});
-  if (key === 'noon') S.sched.push({at:8, type:'req', fired:false},{at:26, type:'req', fired:false});
-  if (key === 'pre') S.sched.push({at:10, type:'drink', fired:false});
+  if (key === 'am') S.sched.push({at:md.phoneAt, type:'phone', fired:false});
+  if (key === 'noon') md.reqAt.forEach(at => S.sched.push({at, type:'req', fired:false}));
+  if (key === 'pre') S.sched.push({at:md.drinkAt, type:'drink', fired:false});
   if (key !== 'resign') addFat(3);
   if (key === 'ot'){ addFat(15); D.wentOT = true; }
   advance(0);
@@ -691,9 +720,9 @@ function arrive(a){
 function spawnEvent(type){
   const ri = D.role;
   let e;
-  if (type === 'phone'){ e = mkTask('phone', PHONE[ri], null, {limit:PHONE_LIMIT}); addFat(5); }
-  else if (type === 'req'){ e = mkTask('req', REQ_ANS[0], null, {limit:REQ_LIMIT, sel:null, ask:REQ_ASK[ri]}); addFat(6); SND.req(); }
-  else if (type === 'drink'){ e = mkTask('drink', DRINK, null, {limit:DRINK_LIMIT}); }
+  if (type === 'phone'){ e = mkTask('phone', PHONE[ri], null, {limit:MD().phoneLim}); addFat(5); }
+  else if (type === 'req'){ e = mkTask('req', REQ_ANS[0], null, {limit:MD().reqLim, sel:null, ask:REQ_ASK[ri]}); addFat(6); SND.req(); }
+  else if (type === 'drink'){ e = mkTask('drink', DRINK, null, {limit:MD().drinkLim}); }
   else { e = mkTask('coffee', COFFEE, null, {limit:CUP_LIMIT}); }
   e.type = type; e.t = 0; e.seq = ++S.seq; e.pri = EV_PRI[type];
   S.evq.push(e);
@@ -719,7 +748,7 @@ function resolveEvent(e, ok){
   else if (e.type === 'drink'){ D.drink = ok ? 'declined' : 'joined'; }
   else if (e.type === 'coffee'){
     if (ok){ addFat(-30); D.cups++; SND.coffee(); }
-    D.cupReadyAt = D.playT + CUP_CD;
+    D.cupReadyAt = D.playT + MD().cupCd;
   }
 }
 function finishEvent(ok){
@@ -777,7 +806,7 @@ function checkClear(){
 function step(now){
   const real = G.last ? Math.max(0, (now - G.last) / 1000) : 0;
   G.last = now;
-  if (G.scr !== 'play' || G.hidden || G.dialog) return;
+  if (G.scr !== 'play' || isPaused()) return;
   const dt = real * G.scale;
   if (G.intro){
     G.intro.left -= dt;
@@ -797,8 +826,9 @@ function advance(dt){
     for (const s of S.sched) if (!s.fired) nb(s.at - S.t);
     nb(S.limit - S.t);
     if (S.ev) nb(S.ev.limit - S.ev.t);
-    if (S.key === 'eve'){ nb(8 - S.t); nb(20 - S.t); }
-    if (S.key === 'ot' && D.fatigue < 90) nb((90 - D.fatigue) / 0.35);
+    const md = MD(), otFat = 0.35 * md.ot;
+    if (S.key === 'eve'){ nb(md.boss[0] - S.t); nb(md.boss[1] - S.t); }
+    if (S.key === 'ot' && D.fatigue < 90) nb((90 - D.fatigue) / otFat);
     const t0 = target();
     if (t0 && t0.pend) nb(PEND_SEC - t0.pendT);
     // この区間の計上
@@ -807,9 +837,9 @@ function advance(dt){
     if (t0){
       if (t0.pend) t0.pendT += d;
       else if (eligible(t0)) D.era[t0.era].T += d;
-      if (D.fatigue >= 90 && (t0.kind === 'work' || t0.kind === 'redo') && S.key !== 'resign') D.limitSec += d;
+      if (D.fatigue >= 90 && (t0.kind === 'work' || t0.kind === 'redo') && S.key !== 'resign') D.limitSec += d * md.limW;
     }
-    if (S.key === 'ot') addFat(0.35 * d);
+    if (S.key === 'ot') addFat(otFat * d);
     // 区切りの時刻で起きること
     for (const a of S.arrivals) if (!a.done && S.t >= a.at - EPS && a.at < S.limit){ a.done = true; arrive(a); }
     for (const s of S.sched) if (!s.fired && S.t >= s.at - EPS && s.at < S.limit){ s.fired = true; spawnEvent(s.type); }
@@ -817,7 +847,7 @@ function advance(dt){
     if (S.ev && S.ev.t >= S.ev.limit - EPS) finishEvent(false);
     const t1 = target();
     if (t1 && t1.pend && t1.pendT >= PEND_SEC - EPS) finalizePending(t1);
-    S.bossOn = S.key === 'eve' && S.t >= 8 - EPS && S.t < 20 - EPS;
+    S.bossOn = S.key === 'eve' && S.t >= md.boss[0] - EPS && S.t < md.boss[1] - EPS;
     checkClear();
     if (!S || S.over) return;
   } while (rem > EPS && guard++ < 1000);
@@ -871,7 +901,7 @@ function selectReq(t, k){
 }
 // 1文字処理。戻り値 'done' でそのバッチの残りを捨てる
 function typeChar(ch){
-  if (G.scr !== 'play' || G.hidden || G.dialog || G.intro || !S || S.over) return 'none';
+  if (G.scr !== 'play' || isPaused() || G.intro || !S || S.over) return 'none';
   const t = target();
   if (!t) return 'none';
   if (t.kind === 'req' && !t.locked){
@@ -964,7 +994,7 @@ kb.addEventListener('focus', () => {
   if (matchMedia('(max-width:760px)').matches) setTimeout(() => { try { $('#card').scrollIntoView({block:'start'}); } catch(e){} }, 300);
 });
 kb.addEventListener('blur', () => { G.dirty = true; });
-function focusKb(){ if (G.scr === 'play' && !G.dialog && !G.hidden) try { kb.focus({preventScroll:true}); } catch(e){} }
+function focusKb(){ if (G.scr === 'play' && !isPaused()) try { kb.focus({preventScroll:true}); } catch(e){} }
 
 document.addEventListener('keydown', e => {
   const k = e.key;
@@ -972,13 +1002,18 @@ document.addEventListener('keydown', e => {
   const mod = e.ctrlKey || e.metaKey || e.altKey;
   if (k === 'Escape'){
     if (e.repeat) return;
-    if (!$('#resetOv').classList.contains('on') && G.scr === 'play' && !G.hidden){ e.preventDefault(); G.dialog ? closeQuit() : openQuit(); }
+    if (!$('#resetOv').classList.contains('on') && G.scr === 'play'){
+      e.preventDefault();
+      if (G.dialog) closeQuit();
+      else if (G.manual || G.hidden) resumeGame();
+      else pauseGame();
+    }
     else if ($('#resetOv').classList.contains('on')) closeReset();
     return;
   }
   if (G.scr === 'play'){
     if (e.repeat && (k.length === 1 || k === 'Enter')){ e.preventDefault(); return; }
-    if (G.dialog || G.hidden) return;
+    if (isPaused()) return;
     if (mod) return;
     if (e.target === kb || e.target === document.body || e.target.closest('#card')){
       if (k === ' ' && !spaceInYomi()){ e.preventDefault(); if (e.target === kb) coffee(); return; }
@@ -1001,6 +1036,7 @@ document.addEventListener('keydown', e => {
 
 /* ================= コーヒー ================= */
 function coffeeWhy(){
+  if (isPaused()) return '一時停止中';
   if (G.scr !== 'play' || G.intro || !S || S.over) return '今は使えません';
   if (S.key === 'resign') return '退職届の最中です';
   if (S.ev) return S.ev.type === 'coffee' ? 'コーヒー中' : '対応中は行けません';
@@ -1040,7 +1076,7 @@ function shachikuScore(d){
     ['飲み会参加', d.drink === 'joined' ? 25 : 0],
     ['追加依頼を引き受けた（' + d.accepted + '件）', Math.min(20, d.accepted * 10)],
     ['残業に入った', d.wentOT ? 20 : 0],
-    ['限界で働いた（' + d.limitSec.toFixed(1) + '秒）', Math.min(15, d.limitSec * 0.5)],
+    ['限界で働いた（' + d.limitSec.toFixed(1) + '秒' + (d.mode === 'short' ? '・時短換算' : '') + '）', Math.min(15, d.limitSec * 0.5)],
     ['コーヒーの飲みすぎ（' + d.cups + '杯）', Math.min(15, Math.max(0, d.cups - 2) * 5)],
     ['上司の前でのミス（' + d.bossMiss + '回）', Math.min(5, d.bossMiss)]
   ];
@@ -1051,8 +1087,9 @@ const yen = v => (v < 0 ? '−' : '') + Math.abs(v).toLocaleString('ja-JP') + '�
 function finishDay(kind){
   if (D.finished) return; D.finished = true;
   const otT = kind === 'ontime' ? 0 : S.t;
-  const otMin = kind === 'ontime' ? 0 : kind === 'forced' ? 480 : Math.ceil(otT * CO_SEC / 60 - 1e-9);
-  const taxi = kind !== 'ontime' && otT >= TRAIN_T ? 6000 : 0;
+  const md = MD();
+  const otMin = kind === 'ontime' ? 0 : kind === 'forced' ? 480 : Math.ceil(otT * CO_SEC * md.ot / 60 - 1e-9);
+  const taxi = kind !== 'ontime' && otT >= TRAIN_T / md.ot - 1e-9 ? 6000 : 0;
   const unfinished = kind === 'forced' ? S.queue.length : 0;
   if (taxi) SND.train(); else SND.stage();
   const cleared = kind !== 'forced';
@@ -1079,6 +1116,7 @@ function finishDay(kind){
     end:endTxt, kind, score:sc.score, redo:D.redo,
     stats:[
       ['役職', role + '（' + D.dayNo + '日目）'],
+      ['勤務モード', md.name],
       ['退勤', kind === 'ontime' ? '定時退社' : kind === 'otdone' ? '残業完了' : '翌02:00強制退勤'],
       ['打った文字数（読み）', D.chars + '文字'],
       ['正解の打鍵数', D.keys + '回'],
@@ -1100,7 +1138,7 @@ function finishDay(kind){
     eraNote: dg.note,
     scoreParts: sc.parts.map(p => [p[0], '+' + (Math.round(p[1] * 10) / 10)]).concat([['社畜度（合計・0〜100）', sc.score + '%']]),
     pay:[['基本給', yen(base)],['残業代（' + otMin + '分×' + rate.toLocaleString() + '円/時）', yen(otPay)],['支給合計', yen(gross)],['ゲーム内一律控除（15%）', yen(-ded)],['タクシー代', yen(-taxi)],['飲み会代', yen(-drinkFee)],['コーヒー代', yen(-cupFee)],['手取り', yen(net)]],
-    payNote: PAY_NOTE, net, canResign, resignTried:false, resigned:false
+    mode: D.mode, payNote: PAY_NOTE, net, canResign, resignTried:false, resigned:false
   };
   P.days = D.dayNo;
   if (cleared) P.clears++;
@@ -1139,6 +1177,7 @@ function startResign(){
   R.resignTried = true; P.last = R; save();
   D = newDay(R.role, R.dayNo, false);
   D.resign = true; D.redo = R.redo; D.fatigue = 0;
+  if (MODES[R.mode]) D.mode = R.mode;
   show('play'); focusKb();
   goIntro('resign');
 }
@@ -1165,7 +1204,7 @@ const $ = s => document.querySelector(s);
 function show(scr){
   G.scr = scr;
   for (const id of ['title','play','result','ending']) $('#' + id).classList.toggle('on', id === scr);
-  if (scr !== 'play'){ G.intro = null; $('#intro').classList.remove('on'); G.dialog = false; $('#quitOv').classList.remove('on'); }
+  if (scr !== 'play'){ G.intro = null; $('#intro').classList.remove('on'); G.dialog = G.manual = G.hidden = false; $('#quitOv').classList.remove('on'); $('#pauseOv').classList.remove('on'); }
   if (scr === 'title') renderTitle();
   G.dirty = true; syncInert();
   window.scrollTo(0, 0);
@@ -1174,9 +1213,31 @@ function anyOv(){ return ['#pauseOv','#quitOv','#resetOv'].some(s => $(s).classL
 function syncInert(){
   const ov = anyOv();
   for (const id of ['title','play','result','ending']) $('#' + id).inert = ov;
+  document.body.classList.toggle('paused', G.scr === 'play' && isPaused());   // 止めている間はお題を隠す
+}
+function showPauseOv(){
+  $('#pauseMsg').textContent = G.hidden ? '画面を離れたので、時間を止めています。' : 'お題は再開するまで隠しています。';
+  $('#pauseOv').classList.add('on'); syncInert();
+  $('#resumeBtn').focus();
+}
+function pauseGame(){
+  if (G.scr !== 'play' || G.manual) return;
+  step(performance.now());
+  G.manual = true;
+  if (!G.dialog) showPauseOv(); else syncInert();
+}
+function resumeGame(){
+  G.manual = false; G.hidden = false;
+  $('#pauseOv').classList.remove('on'); syncInert();
+  G.last = performance.now();
+  if (G.dialog) $('#contBtn').focus(); else focusKb();
 }
 function openQuit(){ step(performance.now()); G.dialog = true; $('#quitOv').classList.add('on'); syncInert(); $('#contBtn').focus(); }
-function closeQuit(){ G.dialog = false; $('#quitOv').classList.remove('on'); syncInert(); G.last = performance.now(); focusKb(); }
+function closeQuit(){
+  G.dialog = false; $('#quitOv').classList.remove('on');
+  if (G.manual || G.hidden){ showPauseOv(); return; }   // 一時停止の画面から来たら一時停止に戻る
+  syncInert(); G.last = performance.now(); focusKb();
+}
 function closeReset(){ $('#resetOv').classList.remove('on'); syncInert(); }
 function renderTitle(){
   const b = $('#tBadge'); b.textContent = '';
@@ -1187,6 +1248,7 @@ function renderTitle(){
   add('転職', P.transfers + '回');
   $('#lastBtn').hidden = !P.last;
   $('#vol').value = P.set.vol; $('#volNum').textContent = P.set.vol + '%';
+  for (const r of document.querySelectorAll('input[name=mode]')) r.checked = r.value === P.set.mode;
   $('#muteChk').checked = P.set.mute; $('#redChk').checked = P.set.reduce;
   $('#saveWarn').hidden = saveOk;
 }
@@ -1200,25 +1262,26 @@ function render(){
   }
 }
 function renderPlay(){
+  const md = MD();
   const st = S ? STAGES[S.key] : STAGES[G.intro ? G.intro.key : 'morning'];
   const key = S ? S.key : (G.intro ? G.intro.key : 'morning');
   setTxt('#pRole', ROLES[D.role]);
-  setTxt('#pDay', D.dayNo + '日目');
+  setTxt('#pDay', D.dayNo + '日目' + (md.short ? '（時短）' : ''));
   setTxt('#pStage', st.name + '｜' + st.title);
-  const t = S ? S.t : 0, lim = st.limit;
+  const t = S ? S.t : 0, lim = md.lim[key];
   setTxt('#pTime', '残り ' + Math.max(0, lim - t).toFixed(1) + '秒');
   $('#pTimeBar').style.width = (100 * Math.max(0, lim - t) / lim) + '%';
   const left = S ? S.queue.length + S.arrivals.filter(a => !a.done).length : 0;
   setTxt('#pLeft', '残り仕事 ' + left + '件' + (D.carry.length ? '／持ち越し ' + D.carry.length + '件' : ''));
   // 時計
   if (key === 'ot'){
-    const cmin = 18*60 + t * CO_SEC / 60;
+    const cmin = 18*60 + t * CO_SEC * md.ot / 60;
     setTxt('#pClockL', '会社時計（残業中）');
     setTxt('#pClock', fmtClock(cmin));
-    const rest = TRAIN_T - t;
-    if (rest > 0){ const rm = Math.ceil(rest * CO_SEC / 60); setTxt('#pTrain', '終電23:30まで あと' + Math.floor(rm/60) + '時間' + (rm%60) + '分'); }
+    const rest = TRAIN_T / md.ot - t;
+    if (rest > 0){ const rm = Math.ceil(rest * CO_SEC * md.ot / 60); setTxt('#pTrain', '終電23:30まで あと' + Math.floor(rm/60) + '時間' + (rm%60) + '分'); }
     else setTxt('#pTrain', '終電終了・タクシー確定');
-    $('#pTrain').classList.toggle('hot', rest < 30);
+    $('#pTrain').classList.toggle('hot', rest < 30 / md.ot);
   } else if (st.clock){
     setTxt('#pClockL', '会社時計');
     setTxt('#pClock', fmtClock(st.clock[0] + (st.clock[1] - st.clock[0]) * t / lim));
@@ -1241,24 +1304,24 @@ function renderPlay(){
   if (sc.className !== cls) sc.className = cls;
   const bm = $('#bossM');
   if (key === 'morning' && S){
-    const dist = Math.max(0, 100 - t * 2.5);
+    const dist = Math.max(0, 100 - t * 100 / lim);
     bm.style.display = ''; bm.style.left = 'calc(' + ((100 - dist) * 0.42) + '% - 40px)';
   } else bm.style.display = 'none';
   $('#bossS').classList.toggle('on', !!(S && S.bossOn));
   $('#cupIco').classList.toggle('on', !!(S && S.ev && S.ev.type === 'coffee'));
   const mates = $('#mates').children;
-  for (let k = 0; k < 3; k++) mates[k].classList.toggle('gone', key === 'ot' && t >= MATE_OUT[k]);
+  for (let k = 0; k < 3; k++) mates[k].classList.toggle('gone', key === 'ot' && t >= MATE_OUT[k] / md.ot);
   const stn = key === 'resign' && S ? 3 - S.queue.filter(x => x.kind === 'work').length : 0;
   if (cache.get('stamps') !== stn){ cache.set('stamps', stn); const el = $('#stamps'); el.textContent = ''; for (let k = 0; k < stn; k++){ const b = document.createElement('b'); b.textContent = '印'; el.append(b); } }
   // バナー
   const bn = [];
   if (S){
-    if (key === 'morning') bn.push(['上司との距離 ' + Math.ceil(Math.max(0, 100 - t * 2.5)) + 'm', t > 30]);
+    if (key === 'morning') bn.push(['上司との距離 ' + Math.ceil(Math.max(0, 100 - t * 100 / lim)) + 'm', t > lim * 0.75]);
     if (S.bossOn) bn.push(['👀 上司が見ています（ミス注意）', true]);
     if (S.ev) bn.push([S.ev.type === 'phone' ? '📞 プルルルル…電話が鳴っています' : S.ev.type === 'req' ? S.ev.ask : S.ev.type === 'drink' ? DRINK_ASK : '☕ コーヒーを買いに行っています', S.ev.type !== 'coffee']);
     if (S.evq.length) bn.push(['待機中：' + S.evq.map(e => EV_NAME[e.type]).join('、'), false]);
     if (key === 'morning' && D.hangover) bn.push(['🍺 二日酔い', false]);
-    if (key === 'ot') MATE_OUT.forEach((m, k) => { if (t >= m && t < m + 3) bn.push(['同僚「お先に失礼しまーす」（残り' + (2 - k) + '人）', false]); });
+    if (key === 'ot') MATE_OUT.forEach((m, k) => { m /= md.ot; if (t >= m && t < m + 3) bn.push(['同僚「お先に失礼しまーす」（残り' + (2 - k) + '人）', false]); });
     if (key === 'resign' && stn) bn.push(['承認印 ' + stn + ' / 3', false]);
   }
   const bk = JSON.stringify(bn);
@@ -1396,6 +1459,7 @@ $('#startBtn').onclick = () => startDay();
 $('#lastBtn').onclick = () => { if (P.last){ R = P.last; showResult(''); } };
 $('#howBtn').onclick = () => { const p = $('#howPanel'); p.hidden = !p.hidden; $('#howBtn').setAttribute('aria-expanded', String(!p.hidden)); };
 $('#vol').oninput = e => { P.set.vol = Math.round(+e.target.value / 10) * 10; $('#volNum').textContent = P.set.vol + '%'; save(); };
+for (const r of document.querySelectorAll('input[name=mode]')) r.onchange = e => { if (e.target.checked){ P.set.mode = e.target.value === 'short' ? 'short' : 'normal'; save(); } };
 $('#muteChk').onchange = e => { P.set.mute = e.target.checked; save(); };
 $('#redChk').onchange = e => { P.set.reduce = e.target.checked; save(); };
 $('#resetBtn').onclick = () => { $('#resetOv').classList.add('on'); syncInert(); $('#resetCancel').focus(); };
@@ -1413,8 +1477,10 @@ $('#sndBtn').onclick = () => { P.set.mute = !P.set.mute; save(); initAudio(); fo
 $('#redBtn').onclick = () => { P.set.reduce = !P.set.reduce; save(); focusKb(); };
 $('#quitBtn').onclick = () => openQuit();
 $('#contBtn').onclick = () => closeQuit();
-$('#abortBtn').onclick = () => { G.dialog = false; $('#quitOv').classList.remove('on'); D = null; S = null; show('title'); };
-$('#resumeBtn').onclick = () => { G.hidden = false; $('#pauseOv').classList.remove('on'); syncInert(); G.last = performance.now(); if (G.dialog) $('#contBtn').focus(); else focusKb(); };
+$('#abortBtn').onclick = () => { D = null; S = null; show('title'); };
+$('#resumeBtn').onclick = () => resumeGame();
+$('#pauseBtn').onclick = () => pauseGame();
+$('#pauseQuitBtn').onclick = () => { $('#pauseOv').classList.remove('on'); openQuit(); };
 $('#nextBtn').onclick = () => nextDay();
 $('#resignBtn').onclick = () => startResign();
 $('#rTitleBtn').onclick = () => show('title');
@@ -1423,7 +1489,7 @@ $('#endTitleBtn').onclick = () => show('title');
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && G.scr === 'play' && !G.hidden){
     step(performance.now());
-    G.hidden = true; $('#pauseOv').classList.add('on'); syncInert();
+    G.hidden = true; showPauseOv();
   }
 });
 
