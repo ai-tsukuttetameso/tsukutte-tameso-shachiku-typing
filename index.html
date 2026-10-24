@@ -74,6 +74,18 @@ input[type=checkbox]{width:20px;height:20px}
   linear-gradient(90deg,#8ea0b8 0 8%,transparent 8% 11%,#7d90aa 11% 22%,transparent 22% 26%,#90a3bb 26% 31%,transparent 31% 40%,#7a8ca6 40% 55%,transparent 55% 58%,#8b9db5 58% 70%,transparent 70% 75%,#7e91ab 75% 90%,transparent 90%);opacity:.7}
 #scene .desk{position:absolute;left:0;right:0;bottom:0;height:44px;background:linear-gradient(#a7835f,#8d6a49)}
 #scene .pc{position:absolute;bottom:30px;left:calc(50% - 36px);width:72px;height:46px;background:#38404d;border-radius:5px;border:3px solid #545e6e}
+#scene .mates i{position:absolute;bottom:40px;width:26px;height:44px;opacity:.6;transition:opacity 1.2s}
+#scene .mates i::before{content:"";position:absolute;left:6px;top:0;width:14px;height:14px;border-radius:50%;background:#3a4252}
+#scene .mates i::after{content:"";position:absolute;left:0;top:15px;width:26px;height:29px;border-radius:12px 12px 3px 3px;background:#3a4252}
+#scene .mates i:nth-child(1){left:7%}#scene .mates i:nth-child(2){left:27%}#scene .mates i:nth-child(3){right:9%}
+#scene .mates i.gone{opacity:0}
+#scene .lamp{display:none;position:absolute;inset:0;background:radial-gradient(ellipse 22% 60% at 50% 100%,rgba(255,236,170,.5),transparent 70%);pointer-events:none}
+#scene.st-ot .lamp{display:block}
+#scene.st-resign .mates{display:none}
+#stamps{position:absolute;bottom:40px;left:calc(50% + 58px);display:flex;gap:4px}
+#stamps b{width:26px;height:26px;border:2px solid var(--ng);color:var(--ng);border-radius:50%;font-size:11px;display:grid;place-items:center;transform:rotate(-12deg);background:rgba(255,255,255,.8)}
+.juri{display:inline-block;border:5px solid var(--ng);color:var(--ng);border-radius:50%;width:110px;height:110px;line-height:100px;font-size:34px;font-weight:900;transform:rotate(-14deg);margin:8px 0}
+#rPayNote{margin:8px 0 0;font-size:12px;color:var(--sub)}
 #scene .cup{position:absolute;bottom:34px;left:calc(50% + 60px);width:16px;height:18px;background:#fff;border-radius:0 0 5px 5px;opacity:0}
 #scene .cup.on{opacity:1}
 .boss{position:absolute;bottom:40px;width:56px;height:96px;opacity:.85;pointer-events:none}
@@ -196,6 +208,8 @@ tr.best td{background:#fff5ec;font-weight:700}
   #scene .desk{height:30px}#scene .pc{bottom:20px;width:50px;height:30px;left:calc(50% - 25px)}
   #scene .env{bottom:16px;width:70px;height:46px;left:calc(50% - 35px)}
   #scene .env::after{inset:4px 22px;font-size:11px}
+  #scene .mates i{bottom:26px;transform:scale(.6);transform-origin:bottom}
+  #stamps{bottom:20px;left:calc(50% + 40px)}#stamps b{width:20px;height:20px;font-size:9px}
   .mcard{left:6%;right:6%;font-size:12px}
   #minutes.static .mcard{width:88%}
   #banner span{font-size:12px}
@@ -261,6 +275,7 @@ tr.best td{background:#fff5ec;font-weight:700}
   </div>
   <div id="scene">
     <div class="win"></div><div class="city"></div><div class="desk"></div><div class="pc"></div><div class="cup" id="cupIco"></div><div class="env"></div>
+    <div class="mates" id="mates"><i></i><i></i><i></i></div><div class="lamp"></div><div id="stamps"></div>
     <div class="boss" id="bossS"></div>
     <div class="boss" id="bossM"></div>
     <div id="minutes"></div>
@@ -311,7 +326,7 @@ tr.best td{background:#fff5ec;font-weight:700}
     <div class="rbox"><h3>本日の業務</h3><div class="kv" id="rStats"></div></div>
     <div class="rbox"><h3>社畜年代の診断</h3><table id="rEra"></table><p class="notice" id="rEraNote"></p></div>
     <div class="rbox"><h3>社畜度の内訳</h3><div class="kv" id="rScore"></div></div>
-    <div class="rbox slip"><h3>給料明細（1日分のゲーム内明細）</h3><div class="kv" id="rPay"></div></div>
+    <div class="rbox slip"><h3>給料明細（1日分のゲーム内明細）</h3><div class="kv" id="rPay"></div><p id="rPayNote"></p></div>
   </div>
   <p class="notice" style="text-align:center">ゲーム内の入力成績と選択による娯楽用診断です。実際の税金・給与制度とは関係ありません。<br>学習・検証目的の非公式作品です。既存のタイピングゲームおよびその制作者とは関係ありません。</p>
 </section>
@@ -319,6 +334,7 @@ tr.best td{background:#fff5ec;font-weight:700}
 <!-- 転職エンディング -->
 <section id="ending" class="scr">
   <p class="credit">ChatGPT×Claude 共同制作</p>
+  <div class="juri" aria-hidden="true">受理</div>
   <p class="big">退職届、提出完了。</p>
   <p style="font-size:20px;font-weight:700">次の職場では、自分の時間も大切に。</p>
   <p id="endStats" class="sub"></p>
@@ -404,6 +420,9 @@ const COFFEE = 'コーヒー買ってきます|こーひーかってきます';
 const EV_PRI = {phone:2,drink:3,req:4,coffee:5};
 const EV_NAME = {phone:'📞 電話',drink:'🍺 飲み会の誘い',req:'📝 追加依頼',coffee:'☕ コーヒー'};
 const TITLES = [['判子を置いて帰る人','根回しの達人','気合いで終電を見送る人'],['取り急ぎ帰る人','CC地獄の住人','最終版の最終版の住人'],['通知を切って帰る人','スレッドを泳ぐ人','オフラインになれない人']];
+const REDO_WHY = ['前例に合わせて','念のため再提出','上の確認が入りました','フォーマット変更のため','誤字がありました（たぶん）','もう少し丁寧に'];
+const MATE_OUT = [20, 60, 100];   // 残業中に同僚が帰る時刻（実秒）
+const PAY_NOTE = '備考：感謝のお言葉（支給済み）／有給申請（確認中）／やりがい（現物支給）';
 const PAY = [[10000,1500],[12000,1800],[14000,2100],[16000,2400]];
 
 /* ================= ローマ字判定 ================= */
@@ -539,8 +558,21 @@ function loadSave(){
     d.set.mute = o.set.mute === true;
     if (typeof o.set.reduce === 'boolean') d.set.reduce = o.set.reduce;
   }
-  if (o.last && typeof o.last === 'object' && typeof o.last.title === 'string' && Array.isArray(o.last.stats)) d.last = o.last;
+  if (validLast(o.last)) d.last = o.last;
   return d;
+}
+function validLast(r){
+  try {
+    if (!r || typeof r !== 'object') return false;
+    const str = v => typeof v === 'string';
+    const pairs = a => Array.isArray(a) && a.length > 0 && a.every(x => Array.isArray(x) && x.length === 2 && str(x[0]) && str(x[1]));
+    const int = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+    return str(r.title) && str(r.sub) && str(r.end) && str(r.eraNote) && (r.payNote == null || str(r.payNote)) &&
+      ['ontime','otdone','forced'].includes(r.kind) && int(r.role, 0, 3) && int(r.dayNo, 1, 1e6) && int(r.redo, 0, REDO_MAX) && int(r.score, 0, 100) &&
+      pairs(r.stats) && pairs(r.scoreParts) && pairs(r.pay) &&
+      Array.isArray(r.era) && r.era.length === 3 && r.era.every(x => Array.isArray(x) && x.length === 6 && x.slice(0, 5).every(str) && typeof x[5] === 'boolean') &&
+      ['canResign','resignTried','resigned'].every(k => typeof r[k] === 'boolean');
+  } catch(e){ return false; }
 }
 function save(){
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(P)); saveOk = true; }
@@ -708,7 +740,7 @@ function addRedo(t, src){
   if (D.redo >= REDO_MAX) return;
   D.redo++;
   const r = src ? mkTask('redo', src, null) : mkTask('redo', t.text + '|' + t.yomi, null);
-  r.isRedo = true; r.label = 'やり直し';
+  r.isRedo = true; r.label = 'やり直し'; r.why = REDO_WHY[(D.redo - 1) % REDO_WHY.length];
   if (S && !S.over) S.queue.push(r); else D.carry.push(r);
   G.dirty = true;
 }
@@ -754,22 +786,41 @@ function step(now){
   }
   if (S && !S.over) advance(dt);
 }
+// 経過時間を「次に何かが起きる時刻」で区切って進める（区間ごとに、その間の入力先へ時間を計上）
 function advance(dt){
-  S.t += dt; D.playT += dt;
-  const ev0 = S.ev;   // このフレームで始まったイベントの個別時間は次から数える
-  for (const a of S.arrivals) if (!a.done && S.t >= a.at && a.at < S.limit){ a.done = true; arrive(a); }
-  for (const s of S.sched) if (!s.fired && S.t >= s.at && s.at < S.limit){ s.fired = true; spawnEvent(s.type); }
-  if (S.t >= S.limit){ S.t = S.limit; endStage('timeout'); return; }
-  if (S.ev && S.ev === ev0){ S.ev.t += dt; if (S.ev.t >= S.ev.limit){ finishEvent(false); } }
-  const t = target();
-  if (t){
-    if (t.pend){ t.pendT += dt; if (t.pendT >= PEND_SEC) finalizePending(t); }
-    else if (eligible(t)) D.era[t.era].T += dt;
-    if (D.fatigue >= 90 && (t.kind === 'work' || t.kind === 'redo') && S.key !== 'resign') D.limitSec += dt;
-  }
-  if (S.key === 'ot') addFat(0.35 * dt);
-  S.bossOn = S.key === 'eve' && S.t >= 8 && S.t < 20;
-  checkClear();
+  let rem = dt, guard = 0;
+  const EPS = 1e-9;
+  do {
+    let d = rem;
+    const nb = x => { if (x > EPS && x < d) d = x; };
+    for (const a of S.arrivals) if (!a.done) nb(a.at - S.t);
+    for (const s of S.sched) if (!s.fired) nb(s.at - S.t);
+    nb(S.limit - S.t);
+    if (S.ev) nb(S.ev.limit - S.ev.t);
+    if (S.key === 'eve'){ nb(8 - S.t); nb(20 - S.t); }
+    if (S.key === 'ot' && D.fatigue < 90) nb((90 - D.fatigue) / 0.35);
+    const t0 = target();
+    if (t0 && t0.pend) nb(PEND_SEC - t0.pendT);
+    // この区間の計上
+    S.t += d; D.playT += d; rem -= d;
+    if (S.ev) S.ev.t += d;
+    if (t0){
+      if (t0.pend) t0.pendT += d;
+      else if (eligible(t0)) D.era[t0.era].T += d;
+      if (D.fatigue >= 90 && (t0.kind === 'work' || t0.kind === 'redo') && S.key !== 'resign') D.limitSec += d;
+    }
+    if (S.key === 'ot') addFat(0.35 * d);
+    // 区切りの時刻で起きること
+    for (const a of S.arrivals) if (!a.done && S.t >= a.at - EPS && a.at < S.limit){ a.done = true; arrive(a); }
+    for (const s of S.sched) if (!s.fired && S.t >= s.at - EPS && s.at < S.limit){ s.fired = true; spawnEvent(s.type); }
+    if (S.t >= S.limit - EPS){ S.t = S.limit; endStage('timeout'); return; }
+    if (S.ev && S.ev.t >= S.ev.limit - EPS) finishEvent(false);
+    const t1 = target();
+    if (t1 && t1.pend && t1.pendT >= PEND_SEC - EPS) finalizePending(t1);
+    S.bossOn = S.key === 'eve' && S.t >= 8 - EPS && S.t < 20 - EPS;
+    checkClear();
+    if (!S || S.over) return;
+  } while (rem > EPS && guard++ < 1000);
 }
 
 /* ================= 入力 ================= */
@@ -866,11 +917,13 @@ function handleText(str){
 }
 const kb = document.getElementById('kb');
 let composing = false, lastVal = '';
+const COARSE = (() => { try { return matchMedia('(pointer:coarse)').matches; } catch(e){ return false; } })();
 kb.addEventListener('compositionstart', () => { composing = true; });
 kb.addEventListener('compositionend', () => {
   composing = false;
   const v = kb.value;
-  if (v.startsWith(lastVal)) consume(v.slice(lastVal.length));
+  if (!COARSE) consume(v);
+  else if (v.startsWith(lastVal)) consume(v.slice(lastVal.length));
   kb.value = ''; lastVal = '';
 });
 function consume(delta){
@@ -892,7 +945,9 @@ kb.addEventListener('beforeinput', e => {
 kb.addEventListener('input', () => {
   const v = kb.value;
   if (composing){
-    // 英字キーボードの予測変換中（ASCIIのみ）は差分を処理。かなが混ざれば判定しない
+    // PC（日本語IME）の未確定文字は判定しない。確定後（compositionend）に英字だけ処理する
+    if (!COARSE){ lastVal = ''; return; }
+    // スマホの英字キーボードは単語ごとに「未確定」のまま文字が増えるので、ASCIIの差分だけ処理する
     if (/[^\x00-\x7f]/.test(v)){ G.kanaWarn = performance.now(); G.dirty = true; lastVal = v; return; }
     if (v.startsWith(lastVal)) handleText(v.slice(lastVal.length));
     lastVal = v;
@@ -913,6 +968,8 @@ function focusKb(){ if (G.scr === 'play' && !G.dialog && !G.hidden) try { kb.foc
 
 document.addEventListener('keydown', e => {
   const k = e.key;
+  if (e.isComposing || e.keyCode === 229) return;
+  const mod = e.ctrlKey || e.metaKey || e.altKey;
   if (k === 'Escape'){
     if (e.repeat) return;
     if (!$('#resetOv').classList.contains('on') && G.scr === 'play' && !G.hidden){ e.preventDefault(); G.dialog ? closeQuit() : openQuit(); }
@@ -922,6 +979,7 @@ document.addEventListener('keydown', e => {
   if (G.scr === 'play'){
     if (e.repeat && (k.length === 1 || k === 'Enter')){ e.preventDefault(); return; }
     if (G.dialog || G.hidden) return;
+    if (mod) return;
     if (e.target === kb || e.target === document.body || e.target.closest('#card')){
       if (k === ' ' && !spaceInYomi()){ e.preventDefault(); if (e.target === kb) coffee(); return; }
       if (k === 'Enter'){ e.preventDefault(); step(performance.now()); const t = target(); if (t && t.pend) finalizePending(t); return; }
@@ -933,7 +991,7 @@ document.addEventListener('keydown', e => {
     }
     return;
   }
-  if (k === 'Enter' && !e.repeat && !anyOv()){
+  if (k === 'Enter' && !e.repeat && !mod && !anyOv()){
     const a = document.activeElement;
     if (a && a.tagName === 'BUTTON') return;
     if (G.scr === 'title') { e.preventDefault(); startDay(); }
@@ -1042,7 +1100,7 @@ function finishDay(kind){
     eraNote: dg.note,
     scoreParts: sc.parts.map(p => [p[0], '+' + (Math.round(p[1] * 10) / 10)]).concat([['社畜度（合計・0〜100）', sc.score + '%']]),
     pay:[['基本給', yen(base)],['残業代（' + otMin + '分×' + rate.toLocaleString() + '円/時）', yen(otPay)],['支給合計', yen(gross)],['ゲーム内一律控除（15%）', yen(-ded)],['タクシー代', yen(-taxi)],['飲み会代', yen(-drinkFee)],['コーヒー代', yen(-cupFee)],['手取り', yen(net)]],
-    net, canResign, resignTried:false, resigned:false
+    payNote: PAY_NOTE, net, canResign, resignTried:false, resigned:false
   };
   P.days = D.dayNo;
   if (cleared) P.clears++;
@@ -1069,6 +1127,7 @@ function showResult(msg){
   const hr = tb.insertRow(); ['年代','秒／文字','正確さ','得点','文字数'].forEach(h => { const th = document.createElement('th'); th.textContent = h; hr.append(th); });
   for (const r of R.era){ const tr = tb.insertRow(); if (r[5]) tr.className = 'best'; r.slice(0,5).forEach(v => { tr.insertCell().textContent = v; }); }
   $('#rEraNote').textContent = R.eraNote;
+  $('#rPayNote').textContent = R.payNote || '';
   $('#resignBtn').hidden = !(R.canResign && !R.resignTried && !R.resigned);
   $('#nextBtn').disabled = false;
   $('#nextBtn').textContent = R.resigned ? '次の会社へ出勤' : '次の日へ（Enter）';
@@ -1089,7 +1148,10 @@ function finishResign(ok){
   if (ok){
     SND.resign();
     P.transfers++; P.role = 0; P.streak = 0; P.hangover = false;
-    R.resigned = true; P.last = R; save();
+    R.resigned = true;
+    R.stats = R.stats.map(([a, b]) => a === '次の出勤' ? [a, '平社員（転職先で）'] : a === '二日酔い' ? [a, 'なし'] : [a, b]);
+    R.end += '　→ 退職届を提出して転職';
+    P.last = R; save();
     $('#endStats').textContent = '退職届：' + D.chars + '文字／ミス' + D.miss + '回　転職回数：' + P.transfers + '回';
     show('ending');
   } else {
@@ -1184,6 +1246,10 @@ function renderPlay(){
   } else bm.style.display = 'none';
   $('#bossS').classList.toggle('on', !!(S && S.bossOn));
   $('#cupIco').classList.toggle('on', !!(S && S.ev && S.ev.type === 'coffee'));
+  const mates = $('#mates').children;
+  for (let k = 0; k < 3; k++) mates[k].classList.toggle('gone', key === 'ot' && t >= MATE_OUT[k]);
+  const stn = key === 'resign' && S ? 3 - S.queue.filter(x => x.kind === 'work').length : 0;
+  if (cache.get('stamps') !== stn){ cache.set('stamps', stn); const el = $('#stamps'); el.textContent = ''; for (let k = 0; k < stn; k++){ const b = document.createElement('b'); b.textContent = '印'; el.append(b); } }
   // バナー
   const bn = [];
   if (S){
@@ -1192,6 +1258,8 @@ function renderPlay(){
     if (S.ev) bn.push([S.ev.type === 'phone' ? '📞 プルルルル…電話が鳴っています' : S.ev.type === 'req' ? S.ev.ask : S.ev.type === 'drink' ? DRINK_ASK : '☕ コーヒーを買いに行っています', S.ev.type !== 'coffee']);
     if (S.evq.length) bn.push(['待機中：' + S.evq.map(e => EV_NAME[e.type]).join('、'), false]);
     if (key === 'morning' && D.hangover) bn.push(['🍺 二日酔い', false]);
+    if (key === 'ot') MATE_OUT.forEach((m, k) => { if (t >= m && t < m + 3) bn.push(['同僚「お先に失礼しまーす」（残り' + (2 - k) + '人）', false]); });
+    if (key === 'resign' && stn) bn.push(['承認印 ' + stn + ' / 3', false]);
   }
   const bk = JSON.stringify(bn);
   if (cache.get('bn') !== bk){
@@ -1266,7 +1334,7 @@ function renderMinutes(key){
 function roleTag(t){
   const tags = [];
   if (t.kind === 'work'){ tags.push([STAGES[S.key].name + 'の仕事', '']); if (t.era != null) tags.push([ERAS[t.era] + 'ワード', ERA_CLS[t.era]]); if (t.carried) tags.push(['持ち越し', 'carry']); }
-  else if (t.kind === 'redo') tags.push(['やり直し', 'redo']);
+  else if (t.kind === 'redo') tags.push(['やり直し：' + (t.why || '差し戻し'), 'redo']);
   else tags.push([EV_NAME[t.type], 'event']);
   return tags;
 }
@@ -1315,7 +1383,7 @@ function renderCard(){
   const ql = $('#queueList'); ql.textContent = '';
   if (S){
     const list = S.queue.filter(x => x !== tg).slice(0, 5);
-    for (const x of list){ const li = document.createElement('li'); li.textContent = (x.isRedo ? '［やり直し］' : x.carried ? '［持ち越し］' : '') + x.text; ql.append(li); }
+    for (const x of list){ const li = document.createElement('li');  li.textContent = (x.isRedo ? '［差し戻し：' + (x.why || '') + '］' : x.carried ? '［持ち越し］' : '') + x.text; ql.append(li); }
     const more = S.queue.filter(x => x !== tg).length - list.length;
     if (more > 0){ const li = document.createElement('li'); li.textContent = 'ほか' + more + '件'; ql.append(li); }
     if (!S.queue.filter(x => x !== tg).length){ const li = document.createElement('li'); li.className = 'sub'; li.textContent = S.arrivals.some(a => !a.done) ? '次の発言待ち' : 'なし'; ql.append(li); }
